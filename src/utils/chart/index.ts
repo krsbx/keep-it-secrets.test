@@ -1,8 +1,28 @@
-import type { ChartConfiguration } from 'chart.js';
+import type { BubbleDataPoint, ChartConfiguration, ScatterDataPoint } from 'chart.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { rootPath } from 'utils/constant';
 import { createChartInstance } from './instance';
+
+const createConfig = <Data extends (number | ScatterDataPoint | BubbleDataPoint | null)[]>(
+  labels: unknown[],
+  data: Data,
+  label: string,
+  borderColor: string
+): ChartConfiguration => ({
+  data: {
+    labels,
+    datasets: [
+      {
+        data,
+        label,
+        borderColor,
+        radius: 0,
+      },
+    ],
+  },
+  type: 'line',
+});
 
 export const generateChart = async (channels: KIS.TypeRGBA, _filePath = 'chart.png') => {
   const instance = createChartInstance({
@@ -26,83 +46,55 @@ export const generateChart = async (channels: KIS.TypeRGBA, _filePath = 'chart.p
     labels.push(i);
   }
 
-  const configurationRed: ChartConfiguration = {
+  const config: ChartConfiguration = {
     data: {
-      labels,
+      labels: labels,
       datasets: [
         {
-          label: 'Red',
           data: red,
-          fill: false,
+          label: 'Red',
           borderColor: 'red',
-          borderWidth: 1,
+          radius: 0,
         },
-      ],
-    },
-    type: 'line',
-  };
-
-  const configurationGreen: ChartConfiguration = {
-    data: {
-      labels,
-      datasets: [
         {
-          label: 'Green',
           data: green,
-          fill: false,
+          label: 'Green',
           borderColor: 'green',
-          borderWidth: 1,
+          radius: 0,
         },
-      ],
-    },
-    type: 'line',
-  };
-
-  const configurationBlue: ChartConfiguration = {
-    data: {
-      labels,
-      datasets: [
         {
-          label: 'Blue',
           data: blue,
-          fill: false,
+          label: 'Blue',
           borderColor: 'blue',
-          borderWidth: 1,
+          radius: 0,
+        },
+        {
+          data: alpha,
+          label: 'Alpha',
+          borderColor: 'black',
+          radius: 0,
         },
       ],
     },
     type: 'line',
   };
 
-  const configurationAlpha: ChartConfiguration = {
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Alpha',
-          data: alpha,
-          fill: false,
-          borderColor: 'black',
-          borderWidth: 1,
-        },
-      ],
-    },
-    type: 'line',
-  };
+  const configRed = createConfig(labels, red, 'Red', 'red');
+  const configGreen = createConfig(labels, green, 'Green', 'green');
+  const configBlue = createConfig(labels, blue, 'Blue', 'blue');
+  const configAlpha = createConfig(labels, alpha, 'Alpha', 'Alpha');
 
   await Promise.all(
-    [configurationRed, configurationGreen, configurationBlue, configurationAlpha].map(
-      async (config, index) => {
-        const filePath = path.resolve(rootPath, `generated/${_filePath}`);
+    [config, configRed, configGreen, configBlue, configAlpha].map(async (config, index) => {
+      const filePath = path.resolve(rootPath, `generated/${_filePath}`);
 
-        if (!fs.pathExistsSync(filePath)) {
-          await fs.mkdirp(filePath);
-        }
-
-        const image = await instance.renderToBuffer(config);
-
-        fs.writeFile(path.resolve(filePath, `${index}.png`), image);
+      if (!fs.pathExistsSync(filePath)) {
+        await fs.mkdirp(filePath);
       }
-    )
+
+      const image = await instance.renderToBuffer(config);
+
+      fs.writeFile(path.resolve(filePath, `${index}.png`), image);
+    })
   );
 };
